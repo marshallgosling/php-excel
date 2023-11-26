@@ -1,0 +1,36 @@
+{
+    "name": "nathan/php-excel",
+    "description": "phpExcel for Laravel",
+    "keywords": [
+        "excel",
+        "laravel"
+    ],
+    "type": "library",
+    "license": "apache2.0",
+    "autoload": {
+        "psr-4": {
+            "Nathan\\PhpExcel\\": "src/"
+        }
+    },
+    "extra": {
+        
+        "laravel": {
+            "aliases": {
+                "PhpExcel": "Tymon\\JWTAuth\\Facades\\JWTAuth"
+            },
+            "providers": [
+                "Tymon\\JWTAuth\\Providers\\LaravelServiceProvider"
+            ]
+        }
+    },
+    "authors": [
+        {
+            "name": "Nathan Gao",
+            "email": "marshall.goslin@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": "^7.0"
+    }
+}
