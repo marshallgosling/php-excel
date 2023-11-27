@@ -211,7 +211,7 @@ class Chart
      * Set Worksheet
      *
      * @param    Worksheet    $pValue
-     * @throws    Chart_Exception
+     * @throws    Chart\ChartException
      * @return Chart
      */
     public function setWorksheet(Worksheet $pValue = null)

@@ -14,14 +14,7 @@
     },
     "extra": {
         
-        "laravel": {
-            "aliases": {
-                "PhpExcel": "Tymon\\JWTAuth\\Facades\\JWTAuth"
-            },
-            "providers": [
-                "Tymon\\JWTAuth\\Providers\\LaravelServiceProvider"
-            ]
-        }
+        
     },
     "authors": [
         {
@@ -29,7 +22,7 @@
             "email": "marshall.goslin@gmail.com"
         }
     ],
-    "minimum-stability": "dev",
+    "minimum-stability": "stable",
     "require": {
         "php": "^7.0"
     }

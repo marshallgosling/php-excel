@@ -48,7 +48,7 @@ class Cell
     /**
      *    Value binder to use
      *
-     *    @var    PHPExcel\Cell\IValueBinder
+     *    @var    Cell\IValueBinder
      */
     private static $valueBinder;
 
