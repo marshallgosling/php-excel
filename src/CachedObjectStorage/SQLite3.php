@@ -2,7 +2,9 @@
 
 namespace Nathan\PHPExcel\CachedObjectStorage;
 
+use Nathan\PHPExcel\Cell;
 use Nathan\PHPExcel\Exception;
+use Nathan\PHPExcel\Worksheet;
 
 /**
  * SQLite3
@@ -41,7 +43,7 @@ class SQLite3 extends CacheBase implements ICache
     /**
      * Database handle
      *
-     * @var resource
+     * @var object
      */
     private $DBHandle = null;
 

@@ -1,7 +1,12 @@
 <?php
+namespace Nathan\PHPExcel\Writer\OpenDocument;
+
+use Nathan\PHPExcel\PHPExcel;
+use Nathan\PHPExcel\Shared\XMLWriter;
+use Nathan\PHPExcel\Writer\WriterException;
 
 /**
- * PHPExcel_Writer_OpenDocument_Settings
+ * Settings
  *
  * Copyright (c) 2006 - 2015 PHPExcel
  *
@@ -25,14 +30,14 @@
  * @license    http://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt    LGPL
  * @version    ##VERSION##, ##DATE##
  */
-class PHPExcel_Writer_OpenDocument_Settings extends PHPExcel_Writer_OpenDocument_WriterPart
+class Settings extends WriterPart
 {
     /**
      * Write settings.xml to XML format
      *
      * @param   PHPExcel                   $pPHPExcel
      * @return  string                     XML Output
-     * @throws  PHPExcel_Writer_Exception
+     * @throws  WriterException
      */
     public function write(PHPExcel $pPHPExcel = null)
     {
@@ -42,9 +47,9 @@ class PHPExcel_Writer_OpenDocument_Settings extends PHPExcel_Writer_OpenDocument
 
         $objWriter = null;
         if ($this->getParentWriter()->getUseDiskCaching()) {
-            $objWriter = new PHPExcel_Shared_XMLWriter(PHPExcel_Shared_XMLWriter::STORAGE_DISK, $this->getParentWriter()->getDiskCachingDirectory());
+            $objWriter = new XMLWriter(XMLWriter::STORAGE_DISK, $this->getParentWriter()->getDiskCachingDirectory());
         } else {
-            $objWriter = new PHPExcel_Shared_XMLWriter(PHPExcel_Shared_XMLWriter::STORAGE_MEMORY);
+            $objWriter = new XMLWriter(XMLWriter::STORAGE_MEMORY);
         }
 
         // XML header

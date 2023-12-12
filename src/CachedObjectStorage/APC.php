@@ -62,7 +62,7 @@ class APC extends CacheBase implements ICache
         if ($this->currentCellIsDirty && !empty($this->currentObjectID)) {
             $this->currentObject->detach();
 
-            if (!apc_store(
+            if (!\apc_store(
                 $this->cachePrefix . $this->currentObjectID . '.cache',
                 serialize($this->currentObject),
                 $this->cacheTime
@@ -114,7 +114,7 @@ class APC extends CacheBase implements ICache
                 return true;
             }
             //    Check if the requested entry still exists in apc
-            $success = apc_fetch($this->cachePrefix.$pCoord.'.cache');
+            $success = \apc_fetch($this->cachePrefix.$pCoord.'.cache');
             if ($success === false) {
                 //    Entry no longer exists in APC, so clear it from the cache array
                 parent::deleteCacheData($pCoord);
@@ -142,7 +142,7 @@ class APC extends CacheBase implements ICache
 
         //    Check if the entry that has been requested actually exists
         if (parent::isDataSet($pCoord)) {
-            $obj = apc_fetch($this->cachePrefix . $pCoord . '.cache');
+            $obj = \apc_fetch($this->cachePrefix . $pCoord . '.cache');
             if ($obj === false) {
                 //    Entry no longer exists in APC, so clear it from the cache array
                 parent::deleteCacheData($pCoord);
@@ -210,13 +210,13 @@ class APC extends CacheBase implements ICache
         $cacheList = $this->getCellList();
         foreach ($cacheList as $cellID) {
             if ($cellID != $this->currentObjectID) {
-                $obj = apc_fetch($this->cachePrefix . $cellID . '.cache');
+                $obj = \apc_fetch($this->cachePrefix . $cellID . '.cache');
                 if ($obj === false) {
                     //    Entry no longer exists in APC, so clear it from the cache array
                     parent::deleteCacheData($cellID);
                     throw new Exception('Cell entry ' . $cellID . ' no longer exists in APC');
                 }
-                if (!apc_store($newCachePrefix . $cellID . '.cache', $obj, $this->cacheTime)) {
+                if (!\apc_store($newCachePrefix . $cellID . '.cache', $obj, $this->cacheTime)) {
                     $this->__destruct();
                     throw new Exception('Failed to store cell ' . $cellID . ' in APC');
                 }
@@ -272,7 +272,7 @@ class APC extends CacheBase implements ICache
     {
         $cacheList = $this->getCellList();
         foreach ($cacheList as $cellID) {
-            apc_delete($this->cachePrefix . $cellID . '.cache');
+            \apc_delete($this->cachePrefix . $cellID . '.cache');
         }
     }
 
@@ -287,7 +287,7 @@ class APC extends CacheBase implements ICache
         if (!function_exists('apc_store')) {
             return false;
         }
-        if (apc_sma_info() === false) {
+        if (\apc_sma_info() === false) {
             return false;
         }
 

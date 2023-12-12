@@ -3,6 +3,7 @@
 namespace Nathan\PHPExcel\CachedObjectStorage;
 
 use Nathan\PHPExcel\Cell;
+use Nathan\PHPExcel\Shared\File;
 use Nathan\PHPExcel\Worksheet;
 
 /**
@@ -189,7 +190,7 @@ class DiscISAM extends CacheBase implements ICache
     {
         $this->cacheDirectory    = ((isset($arguments['dir'])) && ($arguments['dir'] !== null))
                                     ? $arguments['dir']
-                                    : Shared_File::sys_get_temp_dir();
+                                    : File::sys_get_temp_dir();
 
         parent::__construct($parent);
         if (is_null($this->fileHandle)) {

@@ -2,7 +2,9 @@
 
 namespace Nathan\PHPExcel\CachedObjectStorage;
 
+use Nathan\PHPExcel\Cell;
 use Nathan\PHPExcel\Exception;
+use Nathan\PHPExcel\Worksheet;
 
 /**
  * Wincache

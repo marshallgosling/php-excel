@@ -3,8 +3,7 @@
 namespace Nathan\PHPExcel\Calculation;
 
 use Nathan\PHPExcel\Calculation;
-
-//require_once ROOT . 'PHPExcel/Shared/trend/trendClass.php';
+use Nathan\PHPExcel\Shared\Trend\Trend;
 
 
 /** LOG_GAMMA_X_MAX_VALUE */
@@ -81,9 +80,9 @@ class Statistical
      *
      * @author Jaco van Kooten
      *
-     * @param p require p>0
-     * @param q require q>0
-     * @return 0 if p<=0, q<=0 or p+q>2.55E305 to avoid errors and over/underflow
+     * @param float p require p>0
+     * @param float q require q>0
+     * @return float 0 if p<=0, q<=0 or p+q>2.55E305 to avoid errors and over/underflow
      */
     private static function beta($p, $q)
     {
@@ -102,10 +101,10 @@ class Statistical
      * @author Paul Meagher
      *
      * The computation is based on formulas from Numerical Recipes, Chapter 6.4 (W.H. Press et al, 1992).
-     * @param x require 0<=x<=1
-     * @param p require p>0
-     * @param q require q>0
-     * @return 0 if x<0, p<=0, q<=0 or p+q>2.55E305 and 1 if x>1 to avoid errors and over/underflow
+     * @param float x require 0<=x<=1
+     * @param float p require p>0
+     * @param float q require q>0
+     * @return float 0 if x<0, p<=0, q<=0 or p+q>2.55E305 and 1 if x>1 to avoid errors and over/underflow
      */
     private static function incompleteBeta($x, $p, $q)
     {
@@ -133,9 +132,9 @@ class Statistical
     /**
      * The natural logarithm of the beta function.
      *
-     * @param p require p>0
-     * @param q require q>0
-     * @return 0 if p<=0, q<=0 or p+q>2.55E305 to avoid errors and over/underflow
+     * @param float p require p>0
+     * @param float q require q>0
+     * @return float 0 if p<=0, q<=0 or p+q>2.55E305 to avoid errors and over/underflow
      * @author Jaco van Kooten
      */
     private static function logBeta($p, $q)
@@ -1170,7 +1169,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getCorrelation();
     }
 
@@ -1328,7 +1327,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getCovariance();
     }
 
@@ -1504,7 +1503,7 @@ class Statistical
                 return $returnValue;
             }
         }
-        return self::NA();
+        return Functions::NA();
     }
 
 
@@ -1614,7 +1613,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getValueOfYForX($xValue);
     }
 
@@ -1785,7 +1784,7 @@ class Statistical
         $newValues = Functions::flattenArray($newValues);
         $const = (is_null($const)) ? true : (boolean) Functions::flattenSingleValue($const);
 
-        $bestFitExponential = trendClass::calculate(trendClass::TREND_EXPONENTIAL, $yValues, $xValues, $const);
+        $bestFitExponential = Trend::calculate(Trend::TREND_EXPONENTIAL, $yValues, $xValues, $const);
         if (empty($newValues)) {
             $newValues = $bestFitExponential->getXValues();
         }
@@ -1909,7 +1908,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getIntersect();
     }
 
@@ -2031,7 +2030,7 @@ class Statistical
             return 0;
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues, $const);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues, $const);
         if ($stats) {
             return array(
                 array(
@@ -2097,7 +2096,7 @@ class Statistical
             return 1;
         }
 
-        $bestFitExponential = trendClass::calculate(trendClass::TREND_EXPONENTIAL, $yValues, $xValues, $const);
+        $bestFitExponential = Trend::calculate(Trend::TREND_EXPONENTIAL, $yValues, $xValues, $const);
         if ($stats) {
             return array(
                 array(
@@ -2922,7 +2921,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getGoodnessOfFit();
     }
 
@@ -2988,7 +2987,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getSlope();
     }
 
@@ -3281,7 +3280,7 @@ class Statistical
             return Functions::DIV0();
         }
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues);
         return $bestFitLinear->getStdevOfResiduals();
     }
 
@@ -3424,7 +3423,7 @@ class Statistical
         $newValues = Functions::flattenArray($newValues);
         $const = (is_null($const)) ? true : (boolean) Functions::flattenSingleValue($const);
 
-        $bestFitLinear = trendClass::calculate(trendClass::TREND_LINEAR, $yValues, $xValues, $const);
+        $bestFitLinear = Trend::calculate(Trend::TREND_LINEAR, $yValues, $xValues, $const);
         if (empty($newValues)) {
             $newValues = $bestFitLinear->getXValues();
         }
