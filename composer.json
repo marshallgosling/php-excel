@@ -6,7 +6,7 @@
         "laravel"
     ],
     "type": "library",
-    "license": "apache2.0",
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Nathan\\PhpExcel\\": "src/"
