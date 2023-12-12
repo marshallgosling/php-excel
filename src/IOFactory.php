@@ -40,8 +40,8 @@ class IOFactory
      * @static
      */
     private static $searchLocations = array(
-        array( 'type' => 'IWriter', 'path' => 'PHPExcel/Writer/{0}.php', 'class' => '\\App\\Tools\\PHPExcel\\Writer\\{0}' ),
-        array( 'type' => 'IReader', 'path' => 'PHPExcel/Reader/{0}.php', 'class' => '\\App\\Tools\\PHPExcel\\Reader\\{0}' )
+        array( 'type' => 'IWriter', 'path' => 'PHPExcel/Writer/{0}.php', 'class' => '\\Nathan\\PHPExcel\\Writer\\{0}' ),
+        array( 'type' => 'IReader', 'path' => 'PHPExcel/Reader/{0}.php', 'class' => '\\Nathan\\PHPExcel\\Reader\\{0}' )
     );
 
     /**
