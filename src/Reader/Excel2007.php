@@ -331,11 +331,11 @@ class Excel2007 extends AbstractReader implements IReader
         
         // Apache POI fixes
         $contents = $archive->getFromIndex(
-            $archive->locateName($fileName)//, \ZIPARCHIVE::FL_NOCASE)
+            $archive->locateName($fileName, \ZIPARCHIVE::FL_NOCASE)
         );
         if ($contents === false) {
             $contents = $archive->getFromIndex(
-                $archive->locateName(substr($fileName, 1))//, \ZIPARCHIVE::FL_NOCASE)
+                $archive->locateName(substr($fileName, 1), \ZIPARCHIVE::FL_NOCASE)
             );
         }
 

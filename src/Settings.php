@@ -63,7 +63,7 @@ class Settings
      *
      * @var string
      */
-    private static $zipClass = self::PCLZIP;//self::ZIPARCHIVE;
+    private static $zipClass = self::ZIPARCHIVE;
 
 
     /**

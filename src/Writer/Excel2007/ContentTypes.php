@@ -211,7 +211,7 @@ class ContentTypes extends WriterPart
      * @param     XMLWriter     $objWriter         XML Writer
      * @param     string                         $pPartname         Part name
      * @param     string                         $pContentType     Content type
-     * @throws     WriterException
+     * @throws    WriterException
      */
     private function writeDefaultContentType(XMLWriter $objWriter = null, $pPartname = '', $pContentType = '')
     {
