@@ -1,7 +1,12 @@
 <?php
+namespace Nathan\PHPExcel\Writer\Excel5;
+
+use Nathan\PHPExcel\Shared\Font as SharedFont;
+use Nathan\PHPExcel\Shared\SharedString;
+use Nathan\PHPExcel\Style\Font as StyleFont;
 
 /**
- * PHPExcel_Writer_Excel5_Font
+ * Font
  *
  * Copyright (c) 2006 - 2015 PHPExcel
  *
@@ -25,7 +30,7 @@
  * @license    http://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt    LGPL
  * @version    ##VERSION##, ##DATE##
  */
-class PHPExcel_Writer_Excel5_Font
+class Font
 {
     /**
      * Color index
@@ -37,16 +42,16 @@ class PHPExcel_Writer_Excel5_Font
     /**
      * Font
      *
-     * @var PHPExcel_Style_Font
+     * @var StyleFont
      */
     private $font;
 
     /**
      * Constructor
      *
-     * @param PHPExcel_Style_Font $font
+     * @param StyleFont $font
      */
-    public function __construct(PHPExcel_Style_Font $font = null)
+    public function __construct(StyleFont $font = null)
     {
         $this->colorIndex = 0x7FFF;
         $this->font = $font;
@@ -81,7 +86,7 @@ class PHPExcel_Writer_Excel5_Font
             $sss = 0;
         }
         $bFamily = 0; // Font family
-        $bCharSet = PHPExcel_Shared_Font::getCharsetFromFontName($this->font->getName()); // Character set
+        $bCharSet = SharedFont::getCharsetFromFontName($this->font->getName()); // Character set
 
         $record = 0x31;        // Record identifier
         $reserved = 0x00;    // Reserved
@@ -115,7 +120,7 @@ class PHPExcel_Writer_Excel5_Font
             $bCharSet,
             $reserved
         );
-        $data .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeShort($this->font->getName());
+        $data .= SharedString::UTF8toBIFF8UnicodeShort($this->font->getName());
 
         $length = strlen($data);
         $header = pack("vv", $record, $length);
@@ -143,11 +148,11 @@ class PHPExcel_Writer_Excel5_Font
      *
      */
     private static $mapUnderline = array(
-        PHPExcel_Style_Font::UNDERLINE_NONE              => 0x00,
-        PHPExcel_Style_Font::UNDERLINE_SINGLE            => 0x01,
-        PHPExcel_Style_Font::UNDERLINE_DOUBLE            => 0x02,
-        PHPExcel_Style_Font::UNDERLINE_SINGLEACCOUNTING  => 0x21,
-        PHPExcel_Style_Font::UNDERLINE_DOUBLEACCOUNTING  => 0x22,
+        StyleFont::UNDERLINE_NONE              => 0x00,
+        StyleFont::UNDERLINE_SINGLE            => 0x01,
+        StyleFont::UNDERLINE_DOUBLE            => 0x02,
+        StyleFont::UNDERLINE_SINGLEACCOUNTING  => 0x21,
+        StyleFont::UNDERLINE_DOUBLEACCOUNTING  => 0x22,
     );
 
     /**

@@ -1,7 +1,30 @@
 <?php
+namespace Nathan\PHPExcel\Writer\Excel5;
+
+use Nathan\PHPExcel\Cell;
+use Nathan\PHPExcel\Cell\DataType;
+use Nathan\PHPExcel\Cell\DataValidation;
+use Nathan\PHPExcel\Exception;
+use Nathan\PHPExcel\Style\Border;
+use Nathan\PHPExcel\RichText;
+use Nathan\PHPExcel\RichText\Run;
+use Nathan\PHPExcel\Shared\Escher as SharedEscher;
+use Nathan\PHPExcel\Shared\Excel5 as SharedExcel5;
+use Nathan\PHPExcel\Shared\Font as SharedFont;
+use Nathan\PHPExcel\Shared\SharedString;
+use Nathan\PHPExcel\Style\Alignment;
+use Nathan\PHPExcel\Style\Color;
+use Nathan\PHPExcel\Style\Conditional;
+use Nathan\PHPExcel\Style\Fill;
+use Nathan\PHPExcel\Style\Font;
+use Nathan\PHPExcel\Style\Protection;
+use Nathan\PHPExcel\Worksheet as PHPExcelWorksheet;
+use Nathan\PHPExcel\Worksheet\PageSetup;
+use Nathan\PHPExcel\Worksheet\SheetView;
+use Nathan\PHPExcel\Writer\WriterException;
 
 /**
- * PHPExcel_Writer_Excel5_Worksheet
+ * Worksheet
  *
  * Copyright (c) 2006 - 2015 PHPExcel
  *
@@ -60,12 +83,12 @@
 // *    License along with this library; if not, write to the Free Software
 // *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // */
-class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
+class Worksheet extends BIFFwriter
 {
     /**
      * Formula parser
      *
-     * @var PHPExcel_Writer_Excel5_Parser
+     * @var Parser
      */
     private $parser;
 
@@ -166,7 +189,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
     /**
      * Sheet object
-     * @var PHPExcel_Worksheet
+     * @var PHPExcelWorksheet
      */
     public $phpSheet;
 
@@ -180,7 +203,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     /**
      * Escher object corresponding to MSODRAWING
      *
-     * @var PHPExcel_Shared_Escher
+     * @var SharedEscher
      */
     private $escher;
 
@@ -191,6 +214,8 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
      */
     public $fontHashIndex;
 
+    private $_preCalculateFormulas;
+    private $_print_headers;
     /**
      * Constructor
      *
@@ -200,8 +225,8 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
      * @param array        &$colors        Colour Table
      * @param mixed        $parser            The formula parser created for the Workbook
      * @param boolean    $preCalculateFormulas    Flag indicating whether formulas should be calculated or just written
-     * @param string    $phpSheet        The worksheet to write
-     * @param PHPExcel_Worksheet $phpSheet
+     * @param PHPExcelWorksheet    $phpSheet        The worksheet to write
+     * 
      */
     public function __construct(&$str_total, &$str_unique, &$str_table, &$colors, $parser, $preCalculateFormulas, $phpSheet)
     {
@@ -248,8 +273,8 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 //        $this->firstRowIndex = ($minR > 65535) ? 65535 : $minR;
         $this->lastRowIndex = ($maxR > 65535) ? 65535 : $maxR ;
 
-        $this->firstColumnIndex = PHPExcel_Cell::columnIndexFromString($minC);
-        $this->lastColumnIndex  = PHPExcel_Cell::columnIndexFromString($maxC);
+        $this->firstColumnIndex = Cell::columnIndexFromString($minC);
+        $this->lastColumnIndex  = Cell::columnIndexFromString($maxC);
 
 //        if ($this->firstColumnIndex > 255) $this->firstColumnIndex = 255;
         if ($this->lastColumnIndex > 255) {
@@ -264,7 +289,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
      * and to the end of the workbook.
      *
      * @access public
-     * @see PHPExcel_Writer_Excel5_Workbook::storeWorkbook()
+     * @see Workbook::storeWorkbook()
      */
     public function close()
     {
@@ -289,7 +314,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
         // Column dimensions
         if (($defaultWidth = $phpSheet->getDefaultColumnDimension()->getWidth()) < 0) {
-            $defaultWidth = PHPExcel_Shared_Font::getDefaultColumnWidthByFont($phpSheet->getParent()->getDefaultStyle()->getFont());
+            $defaultWidth = SharedFont::getDefaultColumnWidthByFont($phpSheet->getParent()->getDefaultStyle()->getFont());
         }
 
         $columnDimensions = $phpSheet->getColumnDimensions();
@@ -301,7 +326,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
             $width = $defaultWidth;
 
-            $columnLetter = PHPExcel_Cell::stringFromColumnIndex($i);
+            $columnLetter = Cell::stringFromColumnIndex($i);
             if (isset($columnDimensions[$columnLetter])) {
                 $columnDimension = $columnDimensions[$columnLetter];
                 if ($columnDimension->getWidth() >= 0) {
@@ -386,7 +411,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         foreach ($phpSheet->getCellCollection() as $cellID) {
             $cell = $phpSheet->getCell($cellID);
             $row = $cell->getRow() - 1;
-            $column = PHPExcel_Cell::columnIndexFromString($cell->getColumn()) - 1;
+            $column = Cell::columnIndexFromString($cell->getColumn()) - 1;
 
             // Don't break Excel!
 //            if ($row + 1 > 65536 or $column + 1 > 256) {
@@ -398,28 +423,28 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $xfIndex = $cell->getXfIndex() + 15; // there are 15 cell style Xfs
 
             $cVal = $cell->getValue();
-            if ($cVal instanceof PHPExcel_RichText) {
+            if ($cVal instanceof RichText) {
                 // $this->writeString($row, $column, $cVal->getPlainText(), $xfIndex);
                 $arrcRun = array();
-                $str_len = PHPExcel_Shared_String::CountCharacters($cVal->getPlainText(), 'UTF-8');
+                $str_len = SharedString::CountCharacters($cVal->getPlainText(), 'UTF-8');
                 $str_pos = 0;
                 $elements = $cVal->getRichTextElements();
                 foreach ($elements as $element) {
                     // FONT Index
-                    if ($element instanceof PHPExcel_RichText_Run) {
+                    if ($element instanceof Run) {
                         $str_fontidx = $this->fontHashIndex[$element->getFont()->getHashCode()];
                     } else {
                         $str_fontidx = 0;
                     }
                     $arrcRun[] = array('strlen' => $str_pos, 'fontidx' => $str_fontidx);
                     // Position FROM
-                    $str_pos += PHPExcel_Shared_String::CountCharacters($element->getText(), 'UTF-8');
+                    $str_pos += SharedString::CountCharacters($element->getText(), 'UTF-8');
                 }
                 $this->writeRichTextString($row, $column, $cVal->getPlainText(), $xfIndex, $arrcRun);
             } else {
                 switch ($cell->getDatatype()) {
-                    case PHPExcel_Cell_DataType::TYPE_STRING:
-                    case PHPExcel_Cell_DataType::TYPE_NULL:
+                    case DataType::TYPE_STRING:
+                    case DataType::TYPE_NULL:
                         if ($cVal === '' || $cVal === null) {
                             $this->writeBlank($row, $column, $xfIndex);
                         } else {
@@ -427,21 +452,21 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                         }
                         break;
 
-                    case PHPExcel_Cell_DataType::TYPE_NUMERIC:
+                    case DataType::TYPE_NUMERIC:
                         $this->writeNumber($row, $column, $cVal, $xfIndex);
                         break;
 
-                    case PHPExcel_Cell_DataType::TYPE_FORMULA:
+                    case DataType::TYPE_FORMULA:
                         $calculatedValue = $this->_preCalculateFormulas ?
                             $cell->getCalculatedValue() : null;
                         $this->writeFormula($row, $column, $cVal, $xfIndex, $calculatedValue);
                         break;
 
-                    case PHPExcel_Cell_DataType::TYPE_BOOL:
+                    case DataType::TYPE_BOOL:
                         $this->writeBoolErr($row, $column, $cVal, 0, $xfIndex);
                         break;
 
-                    case PHPExcel_Cell_DataType::TYPE_ERROR:
+                    case DataType::TYPE_ERROR:
                         $this->writeBoolErr($row, $column, self::mapErrorCode($cVal), 1, $xfIndex);
                         break;
 
@@ -472,7 +497,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
         // Hyperlinks
         foreach ($phpSheet->getHyperLinkCollection() as $coordinate => $hyperlink) {
-            list($column, $row) = PHPExcel_Cell::coordinateFromString($coordinate);
+            list($column, $row) = Cell::coordinateFromString($coordinate);
 
             $url = $hyperlink->getUrl();
 
@@ -489,7 +514,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 $url = 'external:' . $url;
             }
 
-            $this->writeUrl($row - 1, PHPExcel_Cell::columnIndexFromString($column) - 1, $url);
+            $this->writeUrl($row - 1, Cell::columnIndexFromString($column) - 1, $url);
         }
 
         $this->writeDataValidity();
@@ -508,8 +533,8 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             // Write ConditionalFormattingTable records
             foreach ($arrConditionalStyles as $cellCoordinate => $conditionalStyles) {
                 foreach ($conditionalStyles as $conditional) {
-                    if ($conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_EXPRESSION
-                        || $conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_CELLIS) {
+                    if ($conditional->getConditionType() == Conditional::CONDITION_EXPRESSION
+                        || $conditional->getConditionType() == Conditional::CONDITION_CELLIS) {
                         if (!in_array($conditional->getHashCode(), $arrConditional)) {
                             $arrConditional[] = $conditional->getHashCode();
                             // Write CFRULE record
@@ -545,10 +570,10 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $lastCell = $explodes[1];
         }
 
-        $firstCellCoordinates = PHPExcel_Cell::coordinateFromString($firstCell); // e.g. array(0, 1)
-        $lastCellCoordinates  = PHPExcel_Cell::coordinateFromString($lastCell);  // e.g. array(1, 6)
+        $firstCellCoordinates = Cell::coordinateFromString($firstCell); // e.g. array(0, 1)
+        $lastCellCoordinates  = Cell::coordinateFromString($lastCell);  // e.g. array(1, 6)
 
-        return pack('vvvv', $firstCellCoordinates[1] - 1, $lastCellCoordinates[1] - 1, PHPExcel_Cell::columnIndexFromString($firstCellCoordinates[0]) - 1, PHPExcel_Cell::columnIndexFromString($lastCellCoordinates[0]) - 1);
+        return pack('vvvv', $firstCellCoordinates[1] - 1, $lastCellCoordinates[1] - 1, Cell::columnIndexFromString($firstCellCoordinates[0]) - 1, Cell::columnIndexFromString($lastCellCoordinates[0]) - 1);
     }
 
     /**
@@ -660,7 +685,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     {
         $record    = 0x00FD;                   // Record identifier
         $length    = 0x000A;                   // Bytes to follow
-        $str = PHPExcel_Shared_String::UTF8toBIFF8UnicodeShort($str, $arrcRun);
+        $str = SharedString::UTF8toBIFF8UnicodeShort($str, $arrcRun);
 
         /* check if string is already present */
         if (!isset($this->stringTable[$str])) {
@@ -729,7 +754,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $record    = 0x00FD;                   // Record identifier
         $length    = 0x000A;                   // Bytes to follow
 
-        $str = PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($str);
+        $str = SharedString::UTF8toBIFF8UnicodeLong($str);
 
         /* check if string is already present */
         if (!isset($this->stringTable[$str])) {
@@ -853,7 +878,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 // Numeric value
                 $num = pack('d', $calculatedValue);
             } elseif (is_string($calculatedValue)) {
-                if (array_key_exists($calculatedValue, PHPExcel_Cell_DataType::getErrorCodes())) {
+                if (array_key_exists($calculatedValue, DataType::getErrorCodes())) {
                     // Error value
                     $num = pack('CCCvCv', 0x02, 0x00, self::mapErrorCode($calculatedValue), 0x00, 0x00, 0xFFFF);
                 } elseif ($calculatedValue === '') {
@@ -880,7 +905,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $formula = substr($formula, 1);
         } else {
             // Error handling
-            $this->writeString($row, $col, 'Unrecognised character for formula');
+            $this->writeString($row, $col, 'Unrecognised character for formula', $xfIndex);
             return -1;
         }
 
@@ -906,8 +931,9 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
             return 0;
 
-        } catch (PHPExcel_Exception $e) {
+        } catch (Exception $e) {
             // do nothing
+            
         }
 
     }
@@ -920,7 +946,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     private function writeStringRecord($stringValue)
     {
         $record = 0x0207;     // Record identifier
-        $data = PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($stringValue);
+        $data = SharedString::UTF8toBIFF8UnicodeLong($stringValue);
 
         $length = strlen($data);
         $header = pack('vv', $record, $length);
@@ -1058,10 +1084,10 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $url .= "\0";
 
         // character count
-        $url_len = PHPExcel_Shared_String::CountCharacters($url);
+        $url_len = SharedString::CountCharacters($url);
         $url_len = pack('V', $url_len);
 
-        $url = PHPExcel_Shared_String::ConvertEncoding($url, 'UTF-16LE', 'UTF-8');
+        $url = SharedString::ConvertEncoding($url, 'UTF-16LE', 'UTF-8');
 
         // Calculate the data length
         $length      = 0x24 + strlen($url);
@@ -1274,7 +1300,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         // no support in PHPExcel for selected sheet, therefore sheet is only selected if it is the active sheet
         $fSelected      = ($this->phpSheet === $this->phpSheet->getParent()->getActiveSheet()) ? 1 : 0;
         $fPaged         = 1;                     // 2
-        $fPageBreakPreview = $this->phpSheet->getSheetView()->getView() === PHPExcel_Worksheet_SheetView::SHEETVIEW_PAGE_BREAK_PREVIEW;
+        $fPageBreakPreview = $this->phpSheet->getSheetView()->getView() === SheetView::SHEETVIEW_PAGE_BREAK_PREVIEW;
 
         $grbit             = $fDspFmla;
         $grbit            |= $fDspGrid       << 1;
@@ -1404,7 +1430,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     {
         // look up the selected cell range
         $selectedCells = $this->phpSheet->getSelectedCells();
-        $selectedCells = PHPExcel_Cell::splitRange($this->phpSheet->getSelectedCells());
+        $selectedCells = Cell::splitRange($this->phpSheet->getSelectedCells());
         $selectedCells = $selectedCells[0];
         if (count($selectedCells) == 2) {
             list($first, $last) = $selectedCells;
@@ -1413,12 +1439,12 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $last  = $selectedCells[0];
         }
 
-        list($colFirst, $rwFirst) = PHPExcel_Cell::coordinateFromString($first);
-        $colFirst = PHPExcel_Cell::columnIndexFromString($colFirst) - 1; // base 0 column index
+        list($colFirst, $rwFirst) = Cell::coordinateFromString($first);
+        $colFirst = Cell::columnIndexFromString($colFirst) - 1; // base 0 column index
         --$rwFirst; // base 0 row index
 
-        list($colLast, $rwLast) = PHPExcel_Cell::coordinateFromString($last);
-        $colLast = PHPExcel_Cell::columnIndexFromString($colLast) - 1; // base 0 column index
+        list($colLast, $rwLast) = Cell::coordinateFromString($last);
+        $colLast = Cell::columnIndexFromString($colLast) - 1; // base 0 column index
         --$rwLast; // base 0 row index
 
         // make sure we are not out of bounds
@@ -1491,12 +1517,12 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             ++$j;
 
             // extract the row and column indexes
-            $range = PHPExcel_Cell::splitRange($mergeCell);
+            $range = Cell::splitRange($mergeCell);
             list($first, $last) = $range[0];
-            list($firstColumn, $firstRow) = PHPExcel_Cell::coordinateFromString($first);
-            list($lastColumn, $lastRow) = PHPExcel_Cell::coordinateFromString($last);
+            list($firstColumn, $firstRow) = Cell::coordinateFromString($first);
+            list($lastColumn, $lastRow) = Cell::coordinateFromString($last);
 
-            $recordData .= pack('vvvv', $firstRow - 1, $lastRow - 1, PHPExcel_Cell::columnIndexFromString($firstColumn) - 1, PHPExcel_Cell::columnIndexFromString($lastColumn) - 1);
+            $recordData .= pack('vvvv', $firstRow - 1, $lastRow - 1, Cell::columnIndexFromString($firstColumn) - 1, Cell::columnIndexFromString($lastColumn) - 1);
 
             // flush record if we have reached limit for number of merged cells, or reached final merged cell
             if ($j == $maxCountMergeCellsPerRecord or $i == $countMergeCells) {
@@ -1621,7 +1647,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 hexdec($password)
             );
 
-            $recordData .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong('p' . md5($recordData));
+            $recordData .= SharedString::UTF8toBIFF8UnicodeLong('p' . md5($recordData));
 
             $length = strlen($recordData);
 
@@ -1694,9 +1720,9 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     {
         $panes = array();
         if ($freezePane = $this->phpSheet->getFreezePane()) {
-            list($column, $row) = PHPExcel_Cell::coordinateFromString($freezePane);
+            list($column, $row) = Cell::coordinateFromString($freezePane);
             $panes[0] = $row - 1;
-            $panes[1] = PHPExcel_Cell::columnIndexFromString($column) - 1;
+            $panes[1] = Cell::columnIndexFromString($column) - 1;
         } else {
             // thaw panes
             return;
@@ -1795,7 +1821,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $fLeftToRight = 0x0;                     // Print over then down
 
         // Page orientation
-        $fLandscape = ($this->phpSheet->getPageSetup()->getOrientation() == PHPExcel_Worksheet_PageSetup::ORIENTATION_LANDSCAPE) ?
+        $fLandscape = ($this->phpSheet->getPageSetup()->getOrientation() == PageSetup::ORIENTATION_LANDSCAPE) ?
             0x0 : 0x1;
 
         $fNoPls       = 0x0;                     // Setup not read from printer
@@ -1844,7 +1870,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         }
         */
 
-        $recordData = PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($this->phpSheet->getHeaderFooter()->getOddHeader());
+        $recordData = SharedString::UTF8toBIFF8UnicodeLong($this->phpSheet->getHeaderFooter()->getOddHeader());
         $length = strlen($recordData);
 
         $header   = pack("vv", $record, $length);
@@ -1868,7 +1894,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         }
         */
 
-        $recordData = PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($this->phpSheet->getHeaderFooter()->getOddFooter());
+        $recordData = SharedString::UTF8toBIFF8UnicodeLong($this->phpSheet->getHeaderFooter()->getOddFooter());
         $length = strlen($recordData);
 
         $header    = pack("vv", $record, $length);
@@ -2040,7 +2066,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $record      = 0x009D;                        // Record identifier
         $length      = 0x0002;                        // Bytes to follow
 
-        $rangeBounds = PHPExcel_Cell::rangeBoundaries($this->phpSheet->getAutoFilter()->getRange());
+        $rangeBounds = Cell::rangeBoundaries($this->phpSheet->getAutoFilter()->getRange());
         $iNumFilters = 1 + $rangeBounds[1][0] - $rangeBounds[0][0];
 
         $header   = pack("vv", $record, $length);
@@ -2142,19 +2168,19 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
         foreach ($this->phpSheet->getBreaks() as $cell => $breakType) {
             // Fetch coordinates
-            $coordinates = PHPExcel_Cell::coordinateFromString($cell);
+            $coordinates = Cell::coordinateFromString($cell);
 
             // Decide what to do by the type of break
             switch ($breakType) {
-                case PHPExcel_Worksheet::BREAK_COLUMN:
+                case \Nathan\PHPExcel\Worksheet::BREAK_COLUMN:
                     // Add to list of vertical breaks
-                    $vbreaks[] = PHPExcel_Cell::columnIndexFromString($coordinates[0]) - 1;
+                    $vbreaks[] = Cell::columnIndexFromString($coordinates[0]) - 1;
                     break;
-                case PHPExcel_Worksheet::BREAK_ROW:
+                case \Nathan\PHPExcel\Worksheet::BREAK_ROW:
                     // Add to list of horizontal breaks
                     $hbreaks[] = $coordinates[1];
                     break;
-                case PHPExcel_Worksheet::BREAK_NONE:
+                case \Nathan\PHPExcel\Worksheet::BREAK_NONE:
                 default:
                     // Nothing to do
                     break;
@@ -2395,10 +2421,10 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $row_end    = $row_start;  // Row containing bottom right corner of object
 
         // Zero the specified offset if greater than the cell dimensions
-        if ($x1 >= PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_start))) {
+        if ($x1 >= SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_start))) {
             $x1 = 0;
         }
-        if ($y1 >= PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_start + 1)) {
+        if ($y1 >= SharedExcel5::sizeRow($this->phpSheet, $row_start + 1)) {
             $y1 = 0;
         }
 
@@ -2406,38 +2432,38 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $height     = $height + $y1 -1;
 
         // Subtract the underlying cell widths to find the end cell of the image
-        while ($width >= PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_end))) {
-            $width -= PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_end));
+        while ($width >= SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_end))) {
+            $width -= SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_end));
             ++$col_end;
         }
 
         // Subtract the underlying cell heights to find the end cell of the image
-        while ($height >= PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_end + 1)) {
-            $height -= PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_end + 1);
+        while ($height >= SharedExcel5::sizeRow($this->phpSheet, $row_end + 1)) {
+            $height -= SharedExcel5::sizeRow($this->phpSheet, $row_end + 1);
             ++$row_end;
         }
 
         // Bitmap isn't allowed to start or finish in a hidden cell, i.e. a cell
         // with zero eight or width.
         //
-        if (PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_start)) == 0) {
+        if (SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_start)) == 0) {
             return;
         }
-        if (PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_end))   == 0) {
+        if (SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_end))   == 0) {
             return;
         }
-        if (PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_start + 1) == 0) {
+        if (SharedExcel5::sizeRow($this->phpSheet, $row_start + 1) == 0) {
             return;
         }
-        if (PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_end + 1)   == 0) {
+        if (SharedExcel5::sizeRow($this->phpSheet, $row_end + 1)   == 0) {
             return;
         }
 
         // Convert the pixel values to the percentage value expected by Excel
-        $x1 = $x1     / PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_start))   * 1024;
-        $y1 = $y1     / PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_start + 1)   *  256;
-        $x2 = $width  / PHPExcel_Shared_Excel5::sizeCol($this->phpSheet, PHPExcel_Cell::stringFromColumnIndex($col_end))     * 1024; // Distance to right side of object
-        $y2 = $height / PHPExcel_Shared_Excel5::sizeRow($this->phpSheet, $row_end + 1)     *  256; // Distance to bottom of object
+        $x1 = $x1     / SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_start))   * 1024;
+        $y1 = $y1     / SharedExcel5::sizeRow($this->phpSheet, $row_start + 1)   *  256;
+        $x2 = $width  / SharedExcel5::sizeCol($this->phpSheet, Cell::stringFromColumnIndex($col_end))     * 1024; // Distance to right side of object
+        $y2 = $height / SharedExcel5::sizeRow($this->phpSheet, $row_end + 1)     *  256; // Distance to bottom of object
 
         $this->writeObjPicture($col_start, $x1, $row_start, $y1, $col_end, $x2, $row_end, $y2);
     }
@@ -2525,7 +2551,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
      * Convert a GD-image into the internal format.
      *
      * @access private
-     * @param resource $image The image to process
+     * @param \GdImage $image The image to process
      * @return array Array with data and properties of the bitmap
      */
     public function processBitmapGd($image)
@@ -2564,7 +2590,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         // Open file.
         $bmp_fd = @fopen($bitmap, "rb");
         if (!$bmp_fd) {
-            throw new PHPExcel_Writer_Exception("Couldn't import $bitmap");
+            throw new WriterException("Couldn't import $bitmap");
         }
 
         // Slurp the file into a string.
@@ -2572,13 +2598,13 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
         // Check that the file is big enough to be a bitmap.
         if (strlen($data) <= 0x36) {
-            throw new PHPExcel_Writer_Exception("$bitmap doesn't contain enough data.\n");
+            throw new WriterException("$bitmap doesn't contain enough data.\n");
         }
 
         // The first 2 bytes are used to identify the bitmap.
         $identity = unpack("A2ident", $data);
         if ($identity['ident'] != "BM") {
-            throw new PHPExcel_Writer_Exception("$bitmap doesn't appear to be a valid bitmap image.\n");
+            throw new WriterException("$bitmap doesn't appear to be a valid bitmap image.\n");
         }
 
         // Remove bitmap data: ID.
@@ -2602,20 +2628,20 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $height = $width_and_height[2];
         $data   = substr($data, 8);
         if ($width > 0xFFFF) {
-            throw new PHPExcel_Writer_Exception("$bitmap: largest image width supported is 65k.\n");
+            throw new WriterException("$bitmap: largest image width supported is 65k.\n");
         }
         if ($height > 0xFFFF) {
-            throw new PHPExcel_Writer_Exception("$bitmap: largest image height supported is 65k.\n");
+            throw new WriterException("$bitmap: largest image height supported is 65k.\n");
         }
 
         // Read and remove the bitmap planes and bpp data. Verify them.
         $planes_and_bitcount = unpack("v2", substr($data, 0, 4));
         $data = substr($data, 4);
         if ($planes_and_bitcount[2] != 24) { // Bitcount
-            throw new PHPExcel_Writer_Exception("$bitmap isn't a 24bit true color bitmap.\n");
+            throw new WriterException("$bitmap isn't a 24bit true color bitmap.\n");
         }
         if ($planes_and_bitcount[1] != 1) {
-            throw new PHPExcel_Writer_Exception("$bitmap: only 1 plane supported in bitmap image.\n");
+            throw new WriterException("$bitmap: only 1 plane supported in bitmap image.\n");
         }
 
         // Read and remove the bitmap compression. Verify compression.
@@ -2624,7 +2650,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
         //$compression = 0;
         if ($compression['comp'] != 0) {
-            throw new PHPExcel_Writer_Exception("$bitmap: compression not supported in bitmap image.\n");
+            throw new WriterException("$bitmap: compression not supported in bitmap image.\n");
         }
 
         // Remove bitmap data: data size, hres, vres, colours, imp. colours.
@@ -2659,7 +2685,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     /**
      * Get Escher object
      *
-     * @return PHPExcel_Shared_Escher
+     * @return Escher
      */
     public function getEscher()
     {
@@ -2669,9 +2695,9 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     /**
      * Set Escher object
      *
-     * @param PHPExcel_Shared_Escher $pValue
+     * @param SharedEscher $pValue
      */
-    public function setEscher(PHPExcel_Shared_Escher $pValue = null)
+    public function setEscher(SharedEscher $pValue = null)
     {
         $this->escher = $pValue;
     }
@@ -2683,7 +2709,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
     {
         // write the Escher stream if necessary
         if (isset($this->escher)) {
-            $writer = new PHPExcel_Writer_Excel5_Escher($this->escher);
+            $writer = new Escher($this->escher);
             $data = $writer->close();
             $spOffsets = $writer->getSpOffsets();
             $spTypes = $writer->getSpTypes();
@@ -2797,28 +2823,28 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 // data type
                 $type = $dataValidation->getType();
                 switch ($type) {
-                    case PHPExcel_Cell_DataValidation::TYPE_NONE:
+                    case DataValidation::TYPE_NONE:
                         $type = 0x00;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_WHOLE:
+                    case DataValidation::TYPE_WHOLE:
                         $type = 0x01;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_DECIMAL:
+                    case DataValidation::TYPE_DECIMAL:
                         $type = 0x02;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_LIST:
+                    case DataValidation::TYPE_LIST:
                         $type = 0x03;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_DATE:
+                    case DataValidation::TYPE_DATE:
                         $type = 0x04;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_TIME:
+                    case DataValidation::TYPE_TIME:
                         $type = 0x05;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_TEXTLENGTH:
+                    case DataValidation::TYPE_TEXTLENGTH:
                         $type = 0x06;
                         break;
-                    case PHPExcel_Cell_DataValidation::TYPE_CUSTOM:
+                    case DataValidation::TYPE_CUSTOM:
                         $type = 0x07;
                         break;
                 }
@@ -2827,13 +2853,13 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 // error style
                 $errorStyle = $dataValidation->getType();
                 switch ($errorStyle) {
-                    case PHPExcel_Cell_DataValidation::STYLE_STOP:
+                    case DataValidation::STYLE_STOP:
                         $errorStyle = 0x00;
                         break;
-                    case PHPExcel_Cell_DataValidation::STYLE_WARNING:
+                    case DataValidation::STYLE_WARNING:
                         $errorStyle = 0x01;
                         break;
-                    case PHPExcel_Cell_DataValidation::STYLE_INFORMATION:
+                    case DataValidation::STYLE_INFORMATION:
                         $errorStyle = 0x02;
                         break;
                 }
@@ -2859,28 +2885,28 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 // condition operator
                 $operator = $dataValidation->getOperator();
                 switch ($operator) {
-                    case PHPExcel_Cell_DataValidation::OPERATOR_BETWEEN:
+                    case DataValidation::OPERATOR_BETWEEN:
                         $operator = 0x00;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_NOTBETWEEN:
+                    case DataValidation::OPERATOR_NOTBETWEEN:
                         $operator = 0x01;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_EQUAL:
+                    case DataValidation::OPERATOR_EQUAL:
                         $operator = 0x02;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_NOTEQUAL:
+                    case DataValidation::OPERATOR_NOTEQUAL:
                         $operator = 0x03;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_GREATERTHAN:
+                    case DataValidation::OPERATOR_GREATERTHAN:
                         $operator = 0x04;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_LESSTHAN:
+                    case DataValidation::OPERATOR_LESSTHAN:
                         $operator = 0x05;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_GREATERTHANOREQUAL:
+                    case DataValidation::OPERATOR_GREATERTHANOREQUAL:
                         $operator = 0x06;
                         break;
-                    case PHPExcel_Cell_DataValidation::OPERATOR_LESSTHANOREQUAL:
+                    case DataValidation::OPERATOR_LESSTHANOREQUAL:
                         $operator = 0x07;
                         break;
                 }
@@ -2891,22 +2917,22 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 // prompt title
                 $promptTitle = $dataValidation->getPromptTitle() !== '' ?
                     $dataValidation->getPromptTitle() : chr(0);
-                $data .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($promptTitle);
+                $data .= SharedString::UTF8toBIFF8UnicodeLong($promptTitle);
 
                 // error title
                 $errorTitle = $dataValidation->getErrorTitle() !== '' ?
                     $dataValidation->getErrorTitle() : chr(0);
-                $data .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($errorTitle);
+                $data .= SharedString::UTF8toBIFF8UnicodeLong($errorTitle);
 
                 // prompt text
                 $prompt = $dataValidation->getPrompt() !== '' ?
                     $dataValidation->getPrompt() : chr(0);
-                $data .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($prompt);
+                $data .= SharedString::UTF8toBIFF8UnicodeLong($prompt);
 
                 // error text
                 $error = $dataValidation->getError() !== '' ?
                     $dataValidation->getError() : chr(0);
-                $data .= PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($error);
+                $data .= SharedString::UTF8toBIFF8UnicodeLong($error);
 
                 // formula 1
                 try {
@@ -2917,7 +2943,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                     $this->parser->parse($formula1);
                     $formula1 = $this->parser->toReversePolish();
                     $sz1 = strlen($formula1);
-                } catch (PHPExcel_Exception $e) {
+                } catch (Exception $e) {
                     $sz1 = 0;
                     $formula1 = '';
                 }
@@ -2928,12 +2954,12 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 try {
                     $formula2 = $dataValidation->getFormula2();
                     if ($formula2 === '') {
-                        throw new PHPExcel_Writer_Exception('No formula2');
+                        throw new WriterException('No formula2');
                     }
                     $this->parser->parse($formula2);
                     $formula2 = $this->parser->toReversePolish();
                     $sz2 = strlen($formula2);
-                } catch (PHPExcel_Exception $e) {
+                } catch (Exception $e) {
                     $sz2 = 0;
                     $formula2 = '';
                 }
@@ -2994,7 +3020,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $wScalvePLV = $this->phpSheet->getSheetView()->getZoomScale(); // 2
 
         // The options flags that comprise $grbit
-        if ($this->phpSheet->getSheetView()->getView() == PHPExcel_Worksheet_SheetView::SHEETVIEW_PAGE_LAYOUT) {
+        if ($this->phpSheet->getSheetView()->getView() == SheetView::SHEETVIEW_PAGE_LAYOUT) {
             $fPageLayoutView   = 1;
         } else {
             $fPageLayoutView   = 0;
@@ -3013,43 +3039,43 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
 
     /**
      * Write CFRule Record
-     * @param PHPExcel_Style_Conditional $conditional
+     * @param Conditional $conditional
      */
-    private function writeCFRule(PHPExcel_Style_Conditional $conditional)
+    private function writeCFRule(Conditional $conditional)
     {
         $record      = 0x01B1;               // Record identifier
 
         // $type : Type of the CF
         // $operatorType : Comparison operator
-        if ($conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_EXPRESSION) {
+        if ($conditional->getConditionType() == Conditional::CONDITION_EXPRESSION) {
             $type = 0x02;
             $operatorType = 0x00;
-        } elseif ($conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_CELLIS) {
+        } elseif ($conditional->getConditionType() == Conditional::CONDITION_CELLIS) {
             $type = 0x01;
 
             switch ($conditional->getOperatorType()) {
-                case PHPExcel_Style_Conditional::OPERATOR_NONE:
+                case Conditional::OPERATOR_NONE:
                     $operatorType = 0x00;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_EQUAL:
+                case Conditional::OPERATOR_EQUAL:
                     $operatorType = 0x03;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_GREATERTHAN:
+                case Conditional::OPERATOR_GREATERTHAN:
                     $operatorType = 0x05;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_GREATERTHANOREQUAL:
+                case Conditional::OPERATOR_GREATERTHANOREQUAL:
                     $operatorType = 0x07;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_LESSTHAN:
+                case Conditional::OPERATOR_LESSTHAN:
                     $operatorType = 0x06;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_LESSTHANOREQUAL:
+                case Conditional::OPERATOR_LESSTHANOREQUAL:
                     $operatorType = 0x08;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_NOTEQUAL:
+                case Conditional::OPERATOR_NOTEQUAL:
                     $operatorType = 0x04;
                     break;
-                case PHPExcel_Style_Conditional::OPERATOR_BETWEEN:
+                case Conditional::OPERATOR_BETWEEN:
                     $operatorType = 0x01;
                     break;
                     // not OPERATOR_NOTBETWEEN 0x02
@@ -3065,7 +3091,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $szValue2 = 0x0000;
             $operand1 = pack('Cv', 0x1E, $arrConditions[0]);
             $operand2 = null;
-        } elseif ($numConditions == 2 && ($conditional->getOperatorType() == PHPExcel_Style_Conditional::OPERATOR_BETWEEN)) {
+        } elseif ($numConditions == 2 && ($conditional->getOperatorType() == Conditional::OPERATOR_BETWEEN)) {
             $szValue1 = ($arrConditions[0] <= 65535 ? 3 : 0x0000);
             $szValue2 = ($arrConditions[1] <= 65535 ? 3 : 0x0000);
             $operand1 = pack('Cv', 0x1E, $arrConditions[0]);
@@ -3099,14 +3125,14 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $bFormatProt = 0;
         }
         // Border
-        $bBorderLeft = ($conditional->getStyle()->getBorders()->getLeft()->getColor()->getARGB() == PHPExcel_Style_Color::COLOR_BLACK
-                        && $conditional->getStyle()->getBorders()->getLeft()->getBorderStyle() == PHPExcel_Style_Border::BORDER_NONE ? 1 : 0);
-        $bBorderRight = ($conditional->getStyle()->getBorders()->getRight()->getColor()->getARGB() == PHPExcel_Style_Color::COLOR_BLACK
-                        && $conditional->getStyle()->getBorders()->getRight()->getBorderStyle() == PHPExcel_Style_Border::BORDER_NONE ? 1 : 0);
-        $bBorderTop = ($conditional->getStyle()->getBorders()->getTop()->getColor()->getARGB() == PHPExcel_Style_Color::COLOR_BLACK
-                        && $conditional->getStyle()->getBorders()->getTop()->getBorderStyle() == PHPExcel_Style_Border::BORDER_NONE ? 1 : 0);
-        $bBorderBottom = ($conditional->getStyle()->getBorders()->getBottom()->getColor()->getARGB() == PHPExcel_Style_Color::COLOR_BLACK
-                        && $conditional->getStyle()->getBorders()->getBottom()->getBorderStyle() == PHPExcel_Style_Border::BORDER_NONE ? 1 : 0);
+        $bBorderLeft = ($conditional->getStyle()->getBorders()->getLeft()->getColor()->getARGB() == Color::COLOR_BLACK
+                        && $conditional->getStyle()->getBorders()->getLeft()->getBorderStyle() == Border::BORDER_NONE ? 1 : 0);
+        $bBorderRight = ($conditional->getStyle()->getBorders()->getRight()->getColor()->getARGB() == Color::COLOR_BLACK
+                        && $conditional->getStyle()->getBorders()->getRight()->getBorderStyle() == Border::BORDER_NONE ? 1 : 0);
+        $bBorderTop = ($conditional->getStyle()->getBorders()->getTop()->getColor()->getARGB() == Color::COLOR_BLACK
+                        && $conditional->getStyle()->getBorders()->getTop()->getBorderStyle() == Border::BORDER_NONE ? 1 : 0);
+        $bBorderBottom = ($conditional->getStyle()->getBorders()->getBottom()->getColor()->getARGB() == Color::COLOR_BLACK
+                        && $conditional->getStyle()->getBorders()->getBottom()->getBorderStyle() == Border::BORDER_NONE ? 1 : 0);
         if ($bBorderLeft == 0 || $bBorderRight == 0 || $bBorderTop == 0 || $bBorderBottom == 0) {
             $bFormatBorder = 1;
         } else {
@@ -3182,7 +3208,7 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 $dataBlockFont =  pack('VVVVVVVV', 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000);
                 $dataBlockFont .= pack('VVVVVVVV', 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000);
             } else {
-                $dataBlockFont = PHPExcel_Shared_String::UTF8toBIFF8UnicodeLong($conditional->getStyle()->getFont()->getName());
+                $dataBlockFont = SharedString::UTF8toBIFF8UnicodeLong($conditional->getStyle()->getFont()->getName());
             }
             // Font Size
             if ($conditional->getStyle()->getFont()->getSize() == null) {
@@ -3211,23 +3237,23 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             }
             // Underline type
             switch ($conditional->getStyle()->getFont()->getUnderline()) {
-                case PHPExcel_Style_Font::UNDERLINE_NONE:
+                case Font::UNDERLINE_NONE:
                     $dataBlockFont .= pack('C', 0x00);
                     $fontUnderline = 0;
                     break;
-                case PHPExcel_Style_Font::UNDERLINE_DOUBLE:
+                case Font::UNDERLINE_DOUBLE:
                     $dataBlockFont .= pack('C', 0x02);
                     $fontUnderline = 0;
                     break;
-                case PHPExcel_Style_Font::UNDERLINE_DOUBLEACCOUNTING:
+                case Font::UNDERLINE_DOUBLEACCOUNTING:
                     $dataBlockFont .= pack('C', 0x22);
                     $fontUnderline = 0;
                     break;
-                case PHPExcel_Style_Font::UNDERLINE_SINGLE:
+                case Font::UNDERLINE_SINGLE:
                     $dataBlockFont .= pack('C', 0x01);
                     $fontUnderline = 0;
                     break;
-                case PHPExcel_Style_Font::UNDERLINE_SINGLEACCOUNTING:
+                case Font::UNDERLINE_SINGLEACCOUNTING:
                     $dataBlockFont .= pack('C', 0x21);
                     $fontUnderline = 0;
                     break;
@@ -3440,22 +3466,22 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             $blockAlign = 0;
             // Alignment and text break
             switch ($conditional->getStyle()->getAlignment()->getHorizontal()) {
-                case PHPExcel_Style_Alignment::HORIZONTAL_GENERAL:
+                case Alignment::HORIZONTAL_GENERAL:
                     $blockAlign = 0;
                     break;
-                case PHPExcel_Style_Alignment::HORIZONTAL_LEFT:
+                case Alignment::HORIZONTAL_LEFT:
                     $blockAlign = 1;
                     break;
-                case PHPExcel_Style_Alignment::HORIZONTAL_RIGHT:
+                case Alignment::HORIZONTAL_RIGHT:
                     $blockAlign = 3;
                     break;
-                case PHPExcel_Style_Alignment::HORIZONTAL_CENTER:
+                case Alignment::HORIZONTAL_CENTER:
                     $blockAlign = 2;
                     break;
-                case PHPExcel_Style_Alignment::HORIZONTAL_CENTER_CONTINUOUS:
+                case Alignment::HORIZONTAL_CENTER_CONTINUOUS:
                     $blockAlign = 6;
                     break;
-                case PHPExcel_Style_Alignment::HORIZONTAL_JUSTIFY:
+                case Alignment::HORIZONTAL_JUSTIFY:
                     $blockAlign = 5;
                     break;
             }
@@ -3465,16 +3491,16 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
                 $blockAlign |= 0 << 3;
             }
             switch ($conditional->getStyle()->getAlignment()->getVertical()) {
-                case PHPExcel_Style_Alignment::VERTICAL_BOTTOM:
+                case Alignment::VERTICAL_BOTTOM:
                     $blockAlign = 2 << 4;
                     break;
-                case PHPExcel_Style_Alignment::VERTICAL_TOP:
+                case Alignment::VERTICAL_TOP:
                     $blockAlign = 0 << 4;
                     break;
-                case PHPExcel_Style_Alignment::VERTICAL_CENTER:
+                case Alignment::VERTICAL_CENTER:
                     $blockAlign = 1 << 4;
                     break;
-                case PHPExcel_Style_Alignment::VERTICAL_JUSTIFY:
+                case Alignment::VERTICAL_JUSTIFY:
                     $blockAlign = 3 << 4;
                     break;
             }
@@ -3500,178 +3526,178 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         if ($bFormatBorder == 1) {
             $blockLineStyle = 0;
             switch ($conditional->getStyle()->getBorders()->getLeft()->getBorderStyle()) {
-                case PHPExcel_Style_Border::BORDER_NONE:
+                case Border::BORDER_NONE:
                     $blockLineStyle |= 0x00;
                     break;
-                case PHPExcel_Style_Border::BORDER_THIN:
+                case Border::BORDER_THIN:
                     $blockLineStyle |= 0x01;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUM:
+                case Border::BORDER_MEDIUM:
                     $blockLineStyle |= 0x02;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHED:
+                case Border::BORDER_DASHED:
                     $blockLineStyle |= 0x03;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOTTED:
+                case Border::BORDER_DOTTED:
                     $blockLineStyle |= 0x04;
                     break;
-                case PHPExcel_Style_Border::BORDER_THICK:
+                case Border::BORDER_THICK:
                     $blockLineStyle |= 0x05;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOUBLE:
+                case Border::BORDER_DOUBLE:
                     $blockLineStyle |= 0x06;
                     break;
-                case PHPExcel_Style_Border::BORDER_HAIR:
+                case Border::BORDER_HAIR:
                     $blockLineStyle |= 0x07;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHED:
+                case Border::BORDER_MEDIUMDASHED:
                     $blockLineStyle |= 0x08;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOT:
+                case Border::BORDER_DASHDOT:
                     $blockLineStyle |= 0x09;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOT:
+                case Border::BORDER_MEDIUMDASHDOT:
                     $blockLineStyle |= 0x0A;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOTDOT:
+                case Border::BORDER_DASHDOTDOT:
                     $blockLineStyle |= 0x0B;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOTDOT:
+                case Border::BORDER_MEDIUMDASHDOTDOT:
                     $blockLineStyle |= 0x0C;
                     break;
-                case PHPExcel_Style_Border::BORDER_SLANTDASHDOT:
+                case Border::BORDER_SLANTDASHDOT:
                     $blockLineStyle |= 0x0D;
                     break;
             }
             switch ($conditional->getStyle()->getBorders()->getRight()->getBorderStyle()) {
-                case PHPExcel_Style_Border::BORDER_NONE:
+                case Border::BORDER_NONE:
                     $blockLineStyle |= 0x00 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_THIN:
+                case Border::BORDER_THIN:
                     $blockLineStyle |= 0x01 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUM:
+                case Border::BORDER_MEDIUM:
                     $blockLineStyle |= 0x02 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHED:
+                case Border::BORDER_DASHED:
                     $blockLineStyle |= 0x03 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOTTED:
+                case Border::BORDER_DOTTED:
                     $blockLineStyle |= 0x04 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_THICK:
+                case Border::BORDER_THICK:
                     $blockLineStyle |= 0x05 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOUBLE:
+                case Border::BORDER_DOUBLE:
                     $blockLineStyle |= 0x06 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_HAIR:
+                case Border::BORDER_HAIR:
                     $blockLineStyle |= 0x07 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHED:
+                case Border::BORDER_MEDIUMDASHED:
                     $blockLineStyle |= 0x08 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOT:
+                case Border::BORDER_DASHDOT:
                     $blockLineStyle |= 0x09 << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOT:
+                case Border::BORDER_MEDIUMDASHDOT:
                     $blockLineStyle |= 0x0A << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOTDOT:
+                case Border::BORDER_DASHDOTDOT:
                     $blockLineStyle |= 0x0B << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOTDOT:
+                case Border::BORDER_MEDIUMDASHDOTDOT:
                     $blockLineStyle |= 0x0C << 4;
                     break;
-                case PHPExcel_Style_Border::BORDER_SLANTDASHDOT:
+                case Border::BORDER_SLANTDASHDOT:
                     $blockLineStyle |= 0x0D << 4;
                     break;
             }
             switch ($conditional->getStyle()->getBorders()->getTop()->getBorderStyle()) {
-                case PHPExcel_Style_Border::BORDER_NONE:
+                case Border::BORDER_NONE:
                     $blockLineStyle |= 0x00 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_THIN:
+                case Border::BORDER_THIN:
                     $blockLineStyle |= 0x01 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUM:
+                case Border::BORDER_MEDIUM:
                     $blockLineStyle |= 0x02 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHED:
+                case Border::BORDER_DASHED:
                     $blockLineStyle |= 0x03 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOTTED:
+                case Border::BORDER_DOTTED:
                     $blockLineStyle |= 0x04 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_THICK:
+                case Border::BORDER_THICK:
                     $blockLineStyle |= 0x05 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOUBLE:
+                case Border::BORDER_DOUBLE:
                     $blockLineStyle |= 0x06 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_HAIR:
+                case Border::BORDER_HAIR:
                     $blockLineStyle |= 0x07 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHED:
+                case Border::BORDER_MEDIUMDASHED:
                     $blockLineStyle |= 0x08 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOT:
+                case Border::BORDER_DASHDOT:
                     $blockLineStyle |= 0x09 << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOT:
+                case Border::BORDER_MEDIUMDASHDOT:
                     $blockLineStyle |= 0x0A << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOTDOT:
+                case Border::BORDER_DASHDOTDOT:
                     $blockLineStyle |= 0x0B << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOTDOT:
+                case Border::BORDER_MEDIUMDASHDOTDOT:
                     $blockLineStyle |= 0x0C << 8;
                     break;
-                case PHPExcel_Style_Border::BORDER_SLANTDASHDOT:
+                case Border::BORDER_SLANTDASHDOT:
                     $blockLineStyle |= 0x0D << 8;
                     break;
             }
             switch ($conditional->getStyle()->getBorders()->getBottom()->getBorderStyle()) {
-                case PHPExcel_Style_Border::BORDER_NONE:
+                case Border::BORDER_NONE:
                     $blockLineStyle |= 0x00 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_THIN:
+                case Border::BORDER_THIN:
                     $blockLineStyle |= 0x01 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUM:
+                case Border::BORDER_MEDIUM:
                     $blockLineStyle |= 0x02 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHED:
+                case Border::BORDER_DASHED:
                     $blockLineStyle |= 0x03 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOTTED:
+                case Border::BORDER_DOTTED:
                     $blockLineStyle |= 0x04 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_THICK:
+                case Border::BORDER_THICK:
                     $blockLineStyle |= 0x05 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOUBLE:
+                case Border::BORDER_DOUBLE:
                     $blockLineStyle |= 0x06 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_HAIR:
+                case Border::BORDER_HAIR:
                     $blockLineStyle |= 0x07 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHED:
+                case Border::BORDER_MEDIUMDASHED:
                     $blockLineStyle |= 0x08 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOT:
+                case Border::BORDER_DASHDOT:
                     $blockLineStyle |= 0x09 << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOT:
+                case Border::BORDER_MEDIUMDASHDOT:
                     $blockLineStyle |= 0x0A << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOTDOT:
+                case Border::BORDER_DASHDOTDOT:
                     $blockLineStyle |= 0x0B << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOTDOT:
+                case Border::BORDER_MEDIUMDASHDOTDOT:
                     $blockLineStyle |= 0x0C << 12;
                     break;
-                case PHPExcel_Style_Border::BORDER_SLANTDASHDOT:
+                case Border::BORDER_SLANTDASHDOT:
                     $blockLineStyle |= 0x0D << 12;
                     break;
             }
@@ -3684,46 +3710,46 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             //@todo writeCFRule() => $blockColor => Index Color for bottom line
             //@todo writeCFRule() => $blockColor => Index Color for diagonal line
             switch ($conditional->getStyle()->getBorders()->getDiagonal()->getBorderStyle()) {
-                case PHPExcel_Style_Border::BORDER_NONE:
+                case Border::BORDER_NONE:
                     $blockColor |= 0x00 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_THIN:
+                case Border::BORDER_THIN:
                     $blockColor |= 0x01 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUM:
+                case Border::BORDER_MEDIUM:
                     $blockColor |= 0x02 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHED:
+                case Border::BORDER_DASHED:
                     $blockColor |= 0x03 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOTTED:
+                case Border::BORDER_DOTTED:
                     $blockColor |= 0x04 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_THICK:
+                case Border::BORDER_THICK:
                     $blockColor |= 0x05 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_DOUBLE:
+                case Border::BORDER_DOUBLE:
                     $blockColor |= 0x06 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_HAIR:
+                case Border::BORDER_HAIR:
                     $blockColor |= 0x07 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHED:
+                case Border::BORDER_MEDIUMDASHED:
                     $blockColor |= 0x08 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOT:
+                case Border::BORDER_DASHDOT:
                     $blockColor |= 0x09 << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOT:
+                case Border::BORDER_MEDIUMDASHDOT:
                     $blockColor |= 0x0A << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_DASHDOTDOT:
+                case Border::BORDER_DASHDOTDOT:
                     $blockColor |= 0x0B << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_MEDIUMDASHDOTDOT:
+                case Border::BORDER_MEDIUMDASHDOTDOT:
                     $blockColor |= 0x0C << 21;
                     break;
-                case PHPExcel_Style_Border::BORDER_SLANTDASHDOT:
+                case Border::BORDER_SLANTDASHDOT:
                     $blockColor |= 0x0D << 21;
                     break;
             }
@@ -3733,67 +3759,67 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
             // Fill Patern Style
             $blockFillPatternStyle = 0;
             switch ($conditional->getStyle()->getFill()->getFillType()) {
-                case PHPExcel_Style_Fill::FILL_NONE:
+                case Fill::FILL_NONE:
                     $blockFillPatternStyle = 0x00;
                     break;
-                case PHPExcel_Style_Fill::FILL_SOLID:
+                case Fill::FILL_SOLID:
                     $blockFillPatternStyle = 0x01;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_MEDIUMGRAY:
+                case Fill::FILL_PATTERN_MEDIUMGRAY:
                     $blockFillPatternStyle = 0x02;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKGRAY:
+                case Fill::FILL_PATTERN_DARKGRAY:
                     $blockFillPatternStyle = 0x03;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTGRAY:
+                case Fill::FILL_PATTERN_LIGHTGRAY:
                     $blockFillPatternStyle = 0x04;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKHORIZONTAL:
+                case Fill::FILL_PATTERN_DARKHORIZONTAL:
                     $blockFillPatternStyle = 0x05;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKVERTICAL:
+                case Fill::FILL_PATTERN_DARKVERTICAL:
                     $blockFillPatternStyle = 0x06;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKDOWN:
+                case Fill::FILL_PATTERN_DARKDOWN:
                     $blockFillPatternStyle = 0x07;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKUP:
+                case Fill::FILL_PATTERN_DARKUP:
                     $blockFillPatternStyle = 0x08;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKGRID:
+                case Fill::FILL_PATTERN_DARKGRID:
                     $blockFillPatternStyle = 0x09;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_DARKTRELLIS:
+                case Fill::FILL_PATTERN_DARKTRELLIS:
                     $blockFillPatternStyle = 0x0A;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTHORIZONTAL:
+                case Fill::FILL_PATTERN_LIGHTHORIZONTAL:
                     $blockFillPatternStyle = 0x0B;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTVERTICAL:
+                case Fill::FILL_PATTERN_LIGHTVERTICAL:
                     $blockFillPatternStyle = 0x0C;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTDOWN:
+                case Fill::FILL_PATTERN_LIGHTDOWN:
                     $blockFillPatternStyle = 0x0D;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTUP:
+                case Fill::FILL_PATTERN_LIGHTUP:
                     $blockFillPatternStyle = 0x0E;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTGRID:
+                case Fill::FILL_PATTERN_LIGHTGRID:
                     $blockFillPatternStyle = 0x0F;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_LIGHTTRELLIS:
+                case Fill::FILL_PATTERN_LIGHTTRELLIS:
                     $blockFillPatternStyle = 0x10;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_GRAY125:
+                case Fill::FILL_PATTERN_GRAY125:
                     $blockFillPatternStyle = 0x11;
                     break;
-                case PHPExcel_Style_Fill::FILL_PATTERN_GRAY0625:
+                case Fill::FILL_PATTERN_GRAY0625:
                     $blockFillPatternStyle = 0x12;
                     break;
-                case PHPExcel_Style_Fill::FILL_GRADIENT_LINEAR:
+                case Fill::FILL_GRADIENT_LINEAR:
                     $blockFillPatternStyle = 0x00;
                     break;    // does not exist in BIFF8
-                case PHPExcel_Style_Fill::FILL_GRADIENT_PATH:
+                case Fill::FILL_GRADIENT_PATH:
                     $blockFillPatternStyle = 0x00;
                     break;    // does not exist in BIFF8
                 default:
@@ -4153,10 +4179,10 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         }
         if ($bFormatProt == 1) {
             $dataBlockProtection = 0;
-            if ($conditional->getStyle()->getProtection()->getLocked() == PHPExcel_Style_Protection::PROTECTION_PROTECTED) {
+            if ($conditional->getStyle()->getProtection()->getLocked() == Protection::PROTECTION_PROTECTED) {
                 $dataBlockProtection = 1;
             }
-            if ($conditional->getStyle()->getProtection()->getHidden() == PHPExcel_Style_Protection::PROTECTION_PROTECTED) {
+            if ($conditional->getStyle()->getProtection()->getHidden() == Protection::PROTECTION_PROTECTED) {
                 $dataBlockProtection = 1 << 1;
             }
         }
@@ -4202,15 +4228,15 @@ class PHPExcel_Writer_Excel5_Worksheet extends PHPExcel_Writer_Excel5_BIFFwriter
         $arrConditional = array();
         foreach ($this->phpSheet->getConditionalStylesCollection() as $cellCoordinate => $conditionalStyles) {
             foreach ($conditionalStyles as $conditional) {
-                if ($conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_EXPRESSION
-                        || $conditional->getConditionType() == PHPExcel_Style_Conditional::CONDITION_CELLIS) {
+                if ($conditional->getConditionType() == Conditional::CONDITION_EXPRESSION
+                        || $conditional->getConditionType() == Conditional::CONDITION_CELLIS) {
                     if (!in_array($conditional->getHashCode(), $arrConditional)) {
                         $arrConditional[] = $conditional->getHashCode();
                     }
                     // Cells
-                    $arrCoord = PHPExcel_Cell::coordinateFromString($cellCoordinate);
+                    $arrCoord = Cell::coordinateFromString($cellCoordinate);
                     if (!is_numeric($arrCoord[0])) {
-                        $arrCoord[0] = PHPExcel_Cell::columnIndexFromString($arrCoord[0]);
+                        $arrCoord[0] = Cell::columnIndexFromString($arrCoord[0]);
                     }
                     if (is_null($numColumnMin) || ($numColumnMin > $arrCoord[0])) {
                         $numColumnMin = $arrCoord[0];

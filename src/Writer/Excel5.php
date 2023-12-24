@@ -118,6 +118,7 @@ class Excel5 extends AbstractWriter implements IWriter
      */
     private $summaryInformation;
 
+    private $writerWorkbook;
     /**
      * Extended OLE object document summary information
      *
@@ -222,14 +223,14 @@ class Excel5 extends AbstractWriter implements IWriter
         $this->documentSummaryInformation = $this->writeDocumentSummaryInformation();
         // initialize OLE Document Summary Information
         if (isset($this->documentSummaryInformation) && !empty($this->documentSummaryInformation)) {
-            $OLE_DocumentSummaryInformation = new Shared_OLE_PPS_File(Shared_OLE::Asc2Ucs(chr(5) . 'DocumentSummaryInformation'));
+            $OLE_DocumentSummaryInformation = new \Nathan\PHPExcel\Shared\OLE\PPS\File(\Nathan\PHPExcel\Shared\OLE::Asc2Ucs(chr(5) . 'DocumentSummaryInformation'));
             $OLE_DocumentSummaryInformation->append($this->documentSummaryInformation);
         }
 
         $this->summaryInformation = $this->writeSummaryInformation();
         // initialize OLE Summary Information
         if (isset($this->summaryInformation) && !empty($this->summaryInformation)) {
-            $OLE_SummaryInformation = new Shared_OLE_PPS_File(Shared_OLE::Asc2Ucs(chr(5) . 'SummaryInformation'));
+            $OLE_SummaryInformation = new \Nathan\PHPExcel\Shared\OLE\PPS\File(\Nathan\PHPExcel\Shared\OLE::Asc2Ucs(chr(5) . 'SummaryInformation'));
             $OLE_SummaryInformation->append($this->summaryInformation);
         }
 
@@ -244,7 +245,7 @@ class Excel5 extends AbstractWriter implements IWriter
             $arrRootData[] = $OLE_DocumentSummaryInformation;
         }
 
-        $root = new Shared_OLE_PPS_Root(time(), time(), $arrRootData);
+        $root = new \Nathan\PHPExcel\Shared\OLE\PPS\Root(time(), time(), $arrRootData);
         // save the OLE file
         $res = $root->save($pFilename);
 

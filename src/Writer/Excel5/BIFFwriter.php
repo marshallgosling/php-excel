@@ -1,7 +1,10 @@
 <?php
+namespace Nathan\PHPExcel\Writer\Excel5;
+
+use Nathan\PHPExcel\Writer\WriterException;
 
 /**
- * PHPExcel_Writer_Excel5_BIFFwriter
+ * BIFFwriter
  *
  * Copyright (c) 2006 - 2015 PHPExcel
  *
@@ -59,7 +62,7 @@
 // *    License along with this library; if not, write to the Free Software
 // *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 // */
-class PHPExcel_Writer_Excel5_BIFFwriter
+class BIFFwriter
 {
     /**
      * The byte order of this architecture. 0 => little endian, 1 => big endian
@@ -114,7 +117,7 @@ class PHPExcel_Writer_Excel5_BIFFwriter
                 $byte_order = 1;    // Big Endian
             } else {
                 // Give up. I'll fix this in a later version.
-                throw new PHPExcel_Writer_Exception("Required floating point format not supported on this platform.");
+                throw new WriterException("Required floating point format not supported on this platform.");
             }
             self::$byteOrder = $byte_order;
         }

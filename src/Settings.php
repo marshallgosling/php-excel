@@ -2,7 +2,7 @@
 
 namespace Nathan\PHPExcel;
 
-use Nathan\PHPExcel\Shared\ZipArchive;
+use ZipArchive;
 
 /**
  * Settings
@@ -33,7 +33,7 @@ class Settings
 {
     /**    constants */
     /**    Available Zip library classes */
-    const PCLZIP     = ZipArchive::class;//'\App\Shared_ZipArchive';
+    const PCLZIP     = \Nathan\PHPExcel\Shared\ZipArchive::class;//'\App\Shared_ZipArchive';
     const ZIPARCHIVE = 'ZipArchive';
 
     /**    Optional Chart Rendering libraries */
@@ -63,7 +63,7 @@ class Settings
      *
      * @var string
      */
-    private static $zipClass = self::ZIPARCHIVE;
+    private static $zipClass = self::PCLZIP;//self::ZIPARCHIVE;
 
 
     /**
