@@ -2,7 +2,7 @@
 
 namespace Nathan\PHPExcel;
 
-use ZipArchive;
+use Nathan\PHPExcel\Shared\ZipArchive;
 
 /**
  * Settings
