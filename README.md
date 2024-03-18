@@ -4,7 +4,7 @@
 
 ```php
 
-use Nathan\PHPExcel;
+use Nathan\PHPExcel\PHPExcel;
 
 function createObj()
 {
