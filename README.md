@@ -3,7 +3,7 @@
 ## PHPExcel library compatible with Laravel Framework >= 8.x
 
 ```php
-
+use Nathan\PHPExcel\IOFactory;
 use Nathan\PHPExcel\PHPExcel;
 
 function createObj()
