@@ -80,7 +80,7 @@ class ZipStreamWrapper
     public function stream_open($path, $mode, $options, &$opened_path)
     {
         // Check for mode
-        if ($mode{0} != 'r') {
+        if ($mode[0] != 'r') {
             throw new ReaderException('Mode ' . $mode . ' is not supported. Only read mode is supported.');
         }
 
